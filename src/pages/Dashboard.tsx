@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { STATUS_LABELS, STATUS_BADGE_CLASSES, PRIORITY_LABELS } from '../lib/types'
+import {
+  STATUS_LABELS,
+  STATUS_BADGE_CLASSES,
+  STATUS_ACCENT_CLASSES,
+  PRIORITY_LABELS,
+} from '../lib/types'
 import type { Project } from '../lib/types'
 
 export default function Dashboard() {
@@ -35,9 +40,9 @@ export default function Dashboard() {
         </div>
         <Link
           to="/yeni-talep"
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          className="rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-200 transition-opacity hover:opacity-90"
         >
-          Yeni talep
+          + Yeni talep
         </Link>
       </div>
 
@@ -66,8 +71,27 @@ export default function Dashboard() {
       )}
 
       {projects && projects.length === 0 && (
-        <div className="mt-12 rounded-xl border border-dashed border-gray-300 p-10 text-center">
-          <p className="text-gray-600">Henüz dahil olduğun bir iş yok.</p>
+        <div className="mt-12 rounded-2xl border border-dashed border-indigo-200 bg-white/60 p-10 text-center backdrop-blur">
+          <svg
+            viewBox="0 0 120 90"
+            className="mx-auto h-24 w-32"
+            aria-hidden="true"
+          >
+            <rect x="14" y="26" width="72" height="48" rx="8" fill="#e0e7ff" />
+            <rect x="26" y="14" width="72" height="48" rx="8" fill="#ffffff" stroke="#c7d2fe" strokeWidth="2" />
+            <rect x="36" y="26" width="34" height="6" rx="3" fill="#a5b4fc" />
+            <rect x="36" y="38" width="52" height="5" rx="2.5" fill="#e0e7ff" />
+            <rect x="36" y="48" width="44" height="5" rx="2.5" fill="#e0e7ff" />
+            <circle cx="100" cy="66" r="14" fill="url(#empty-g)" />
+            <path d="M100 60v12M94 66h12" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+            <defs>
+              <linearGradient id="empty-g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#6366f1" />
+                <stop offset="1" stopColor="#c026d3" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <p className="mt-4 text-gray-600">Henüz dahil olduğun bir iş yok.</p>
           <Link
             to="/yeni-talep"
             className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline"
@@ -83,7 +107,7 @@ export default function Dashboard() {
             <li key={p.id}>
               <Link
                 to={`/is/${p.id}`}
-                className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 transition-shadow hover:shadow-md"
+                className={`flex items-center justify-between rounded-xl border border-gray-200 border-l-4 bg-white/90 px-4 py-3 backdrop-blur transition-shadow hover:shadow-lg hover:shadow-indigo-100 ${STATUS_ACCENT_CLASSES[p.status]}`}
               >
                 <div>
                   <p className="font-medium text-gray-900">{p.title}</p>

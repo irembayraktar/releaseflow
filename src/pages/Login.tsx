@@ -60,8 +60,14 @@ export default function Login() {
     'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-violet-100 px-4">
-      <div className="w-full max-w-sm">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-200 via-fuchsia-50 to-sky-200 px-4">
+      {/* Dekoratif renk lekeleri */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-20 -top-20 h-80 w-80 rounded-full bg-indigo-400/30 blur-3xl" />
+        <div className="absolute -bottom-24 -right-16 h-96 w-96 rounded-full bg-fuchsia-400/30 blur-3xl" />
+        <div className="absolute left-1/2 top-1/4 h-64 w-64 rounded-full bg-sky-400/25 blur-3xl" />
+      </div>
+      <div className="relative w-full max-w-sm">
         <div className="flex flex-col items-center">
           <Logo size={56} />
           <h1 className="mt-3 text-2xl font-semibold text-gray-900">ReleaseFlow</h1>
@@ -150,7 +156,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+            className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-200 transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {submitting ? 'Gönderiliyor…' : mode === 'login' ? 'Giriş yap' : 'Kayıt ol'}
           </button>

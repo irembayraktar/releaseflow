@@ -373,7 +373,7 @@ export default function ProjectDetail() {
                   ? 'bg-amber-600 hover:bg-amber-700'
                   : isReject
                     ? 'bg-rose-600 hover:bg-rose-700'
-                    : 'bg-indigo-600 hover:bg-indigo-700'
+                    : 'bg-gradient-to-r from-indigo-600 to-fuchsia-600 shadow-md shadow-indigo-200 hover:opacity-90'
               return (
                 <button
                   key={t.to_status}

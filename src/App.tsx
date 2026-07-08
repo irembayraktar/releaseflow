@@ -22,7 +22,13 @@ function ProtectedLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-violet-100">
+    <div className="relative min-h-screen bg-gradient-to-br from-indigo-100 via-fuchsia-50 to-sky-100">
+      {/* Dekoratif renk lekeleri */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-indigo-300/40 blur-3xl" />
+        <div className="absolute -right-32 top-1/3 h-[28rem] w-[28rem] rounded-full bg-fuchsia-300/35 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-sky-300/40 blur-3xl" />
+      </div>
       <header className="sticky top-0 z-10 border-b border-indigo-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <span className="flex items-center gap-2 font-semibold text-gray-900">
@@ -37,7 +43,9 @@ function ProtectedLayout() {
           </button>
         </div>
       </header>
-      <Outlet />
+      <div className="relative">
+        <Outlet />
+      </div>
     </div>
   )
 }

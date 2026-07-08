@@ -116,6 +116,19 @@ export const PRIORITY_LABELS: Record<ProjectPriority, string> = {
   kritik: 'Kritik',
 }
 
+// Liste kartlarının sol kenar vurgusu; rozetle aynı renk ailesi.
+export const STATUS_ACCENT_CLASSES: Record<ProjectStatus, string> = {
+  yeni_talep: 'border-l-sky-400',
+  inceleniyor: 'border-l-indigo-400',
+  gelistirmede: 'border-l-amber-400',
+  test_bekliyor: 'border-l-purple-400',
+  revize_gerekli: 'border-l-rose-400',
+  test_uygun: 'border-l-emerald-400',
+  canliya_alma_bekliyor: 'border-l-teal-400',
+  canliya_alindi: 'border-l-green-500',
+  kapatildi: 'border-l-gray-300',
+}
+
 export const STATUS_BADGE_CLASSES: Record<ProjectStatus, string> = {
   yeni_talep: 'bg-sky-100 text-sky-800',
   inceleniyor: 'bg-indigo-100 text-indigo-800',

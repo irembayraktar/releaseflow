@@ -240,7 +240,7 @@ export default function NewRequest() {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+            className="rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-200 transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {submitting ? 'Oluşturuluyor…' : 'Talebi oluştur'}
           </button>
