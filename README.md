@@ -1,10 +1,10 @@
 # ReleaseFlow
 
-SAP/ABAP geliştirme süreçlerinde mail üzerinden dağılan iş talebi, test ve canlıya alma iletişimini tek merkezde toplayan iş takip uygulaması.
+Talep → geliştirme → test → canlıya alma akışıyla çalışan ekiplerde mail üzerinden dağılan iş takibini tek merkezde toplayan uygulama.
 
 ## Problem
 
-Geliştirme talepleri, test bildirimleri ve canlıya alma onayları ayrı mail zincirlerinde kayboluyor; hangi işin kimde olduğu ve hangi aşamada beklediği takip edilemiyor.
+Geliştirme talepleri, test bildirimleri ve canlıya alma onayları ayrı mail zincirlerinde kayboluyor; hangi işin kimde olduğu ve hangi aşamada beklediği takip edilemiyor. Bu problemi SAP/ABAP geliştirme süreçlerinde bizzat yaşadım; uygulama, aynı onay akışıyla çalışan her ekipte (kurumsal yazılım, iç araçlar, ajans işleri) kullanılabilecek şekilde tasarlandı.
 
 ## Çözüm
 
