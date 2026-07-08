@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import NewRequest from './pages/NewRequest'
+import ProjectDetail from './pages/ProjectDetail'
 
 function ProtectedLayout() {
   const { session, loading, signOut } = useAuth()
@@ -44,7 +46,8 @@ export default function App() {
           <Route path="/giris" element={<Login />} />
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<Dashboard />} />
-            {/* Sıradaki ekranlar: /yeni-talep ve /is/:id */}
+            <Route path="/yeni-talep" element={<NewRequest />} />
+            <Route path="/is/:id" element={<ProjectDetail />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
