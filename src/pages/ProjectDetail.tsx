@@ -12,6 +12,7 @@ import {
 import type {
   Project,
   ProjectStatus,
+  ProjectPriority,
   MemberRole,
   StatusTransition,
 } from '../lib/types'
@@ -74,6 +75,12 @@ export default function ProjectDetail() {
   const [changingStatus, setChangingStatus] = useState(false)
   const [rejectingTo, setRejectingTo] = useState<ProjectStatus | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editExpected, setEditExpected] = useState('')
+  const [editPriority, setEditPriority] = useState<ProjectPriority>('orta')
+  const [savingEdit, setSavingEdit] = useState(false)
   const [commentBody, setCommentBody] = useState('')
   const [sendingComment, setSendingComment] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -160,6 +167,45 @@ export default function ProjectDetail() {
     }
     setRejectingTo(null)
     setRejectReason('')
+    await load()
+  }
+
+  const startEdit = () => {
+    if (!project) return
+    setEditTitle(project.title)
+    setEditDescription(project.description)
+    setEditExpected(project.expected_outcome ?? '')
+    setEditPriority(project.priority)
+    setEditing(true)
+  }
+
+  const saveEdit = async () => {
+    if (!project) return
+    setActionError(null)
+
+    if (editTitle.trim().length < 3 || editDescription.trim().length < 10) {
+      setActionError('Başlık en az 3, iş tanımı en az 10 karakter olmalı.')
+      return
+    }
+
+    setSavingEdit(true)
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        expected_outcome: editExpected.trim() || null,
+        priority: editPriority,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', project.id)
+
+    setSavingEdit(false)
+    if (error) {
+      setActionError(friendlyError(error.message))
+      return
+    }
+    setEditing(false)
     await load()
   }
 
@@ -406,16 +452,118 @@ export default function ProjectDetail() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <section className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-gray-900">İş tanımı</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">
-              {project.description}
-            </p>
-            {project.expected_outcome && (
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-900">İş tanımı</h2>
+              {(myRoles.includes('talep_sahibi') || myRoles.includes('yonetici')) &&
+                !editing && (
+                  <button
+                    onClick={startEdit}
+                    className="text-sm font-medium text-indigo-600 hover:underline"
+                  >
+                    Düzenle
+                  </button>
+                )}
+            </div>
+
+            {editing ? (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label
+                    htmlFor="edit-title"
+                    className="block text-xs font-medium text-gray-500"
+                  >
+                    Başlık
+                  </label>
+                  <input
+                    id="edit-title"
+                    type="text"
+                    maxLength={120}
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="edit-description"
+                    className="block text-xs font-medium text-gray-500"
+                  >
+                    İş tanımı
+                  </label>
+                  <textarea
+                    id="edit-description"
+                    rows={4}
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="edit-expected"
+                    className="block text-xs font-medium text-gray-500"
+                  >
+                    Beklenen sonuç
+                  </label>
+                  <textarea
+                    id="edit-expected"
+                    rows={2}
+                    value={editExpected}
+                    onChange={(e) => setEditExpected(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="edit-priority"
+                    className="block text-xs font-medium text-gray-500"
+                  >
+                    Öncelik
+                  </label>
+                  <select
+                    id="edit-priority"
+                    value={editPriority}
+                    onChange={(e) => setEditPriority(e.target.value as ProjectPriority)}
+                    className="mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={saveEdit}
+                    disabled={savingEdit}
+                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {savingEdit ? 'Kaydediliyor…' : 'Kaydet'}
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="text-sm text-gray-500 hover:text-gray-900"
+                  >
+                    Vazgeç
+                  </button>
+                </div>
+              </div>
+            ) : (
               <>
-                <h3 className="mt-4 text-sm font-semibold text-gray-900">Beklenen sonuç</h3>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">
-                  {project.expected_outcome}
+                <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">
+                  {project.description}
                 </p>
+                {project.expected_outcome && (
+                  <>
+                    <h3 className="mt-4 text-sm font-semibold text-gray-900">
+                      Beklenen sonuç
+                    </h3>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">
+                      {project.expected_outcome}
+                    </p>
+                  </>
+                )}
               </>
             )}
           </section>

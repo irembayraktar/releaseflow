@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import Logo from './components/Logo'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import NewRequest from './pages/NewRequest'
@@ -21,10 +22,13 @@ function ProtectedLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-violet-100">
+      <header className="sticky top-0 z-10 border-b border-indigo-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <span className="font-semibold text-gray-900">ReleaseFlow</span>
+          <span className="flex items-center gap-2 font-semibold text-gray-900">
+            <Logo size={28} />
+            ReleaseFlow
+          </span>
           <button
             onClick={signOut}
             className="text-sm text-gray-500 transition-colors hover:text-gray-900"
