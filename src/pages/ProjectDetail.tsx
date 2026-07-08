@@ -15,7 +15,9 @@ import type {
   ProjectPriority,
   MemberRole,
   StatusTransition,
+  Profile,
 } from '../lib/types'
+import PersonPicker from '../components/PersonPicker'
 
 interface MemberWithProfile {
   user_id: string
@@ -71,6 +73,10 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null)
   const [members, setMembers] = useState<MemberWithProfile[]>([])
   const [invited, setInvited] = useState<InvitedMember[]>([])
+  const [people, setPeople] = useState<Profile[]>([])
+  const [addUserId, setAddUserId] = useState('')
+  const [addUserRole, setAddUserRole] = useState<MemberRole>('gelistirici')
+  const [addingMember, setAddingMember] = useState(false)
   const [comments, setComments] = useState<CommentWithProfile[]>([])
   const [history, setHistory] = useState<HistoryWithProfile[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
@@ -101,6 +107,7 @@ export default function ProjectDetail() {
       historyRes,
       filesRes,
       transitionsRes,
+      peopleRes,
     ] = await Promise.all([
         supabase.from('projects').select('*').eq('id', id).single(),
         supabase
@@ -127,6 +134,7 @@ export default function ProjectDetail() {
           .eq('project_id', id)
           .order('created_at'),
         supabase.from('status_transitions').select('*'),
+        supabase.from('profiles').select('*').order('name'),
       ])
 
     if (projectRes.error) {
@@ -146,6 +154,7 @@ export default function ProjectDetail() {
     setHistory((historyRes.data as unknown as HistoryWithProfile[]) ?? [])
     setFiles(filesRes.data ?? [])
     setTransitions(transitionsRes.data ?? [])
+    setPeople(peopleRes.data ?? [])
     setLoading(false)
   }, [id])
 
@@ -224,6 +233,33 @@ export default function ProjectDetail() {
       return
     }
     setEditing(false)
+    await load()
+  }
+
+  const addMember = async () => {
+    if (!project || !addUserId) {
+      setActionError('Eklenecek kişiyi seç.')
+      return
+    }
+    setActionError(null)
+    setAddingMember(true)
+
+    const { error } = await supabase.from('project_members').insert({
+      project_id: project.id,
+      user_id: addUserId,
+      member_role: addUserRole,
+    })
+
+    setAddingMember(false)
+    if (error) {
+      setActionError(
+        error.code === '23505'
+          ? 'Bu kişi zaten işe ekli.'
+          : friendlyError(error.message),
+      )
+      return
+    }
+    setAddUserId('')
     await load()
   }
 
@@ -672,6 +708,40 @@ export default function ProjectDetail() {
                 </li>
               ))}
             </ul>
+
+            {(myRoles.includes('talep_sahibi') || myRoles.includes('yonetici')) && (
+              <div className="mt-4 rounded-lg bg-gray-50 p-3">
+                <p className="text-xs font-medium text-gray-600">Kişi ekle</p>
+                <PersonPicker
+                  people={people}
+                  value={addUserId}
+                  onChange={setAddUserId}
+                  excludeIds={members.map((m) => m.user_id)}
+                />
+                <div className="mt-2 flex items-center gap-2">
+                  <select
+                    value={addUserRole}
+                    onChange={(e) => setAddUserRole(e.target.value as MemberRole)}
+                    className="flex-1 rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label="Eklenecek kişinin rolü"
+                  >
+                    <option value="gelistirici">{ROLE_LABELS.gelistirici}</option>
+                    <option value="testci">{ROLE_LABELS.testci}</option>
+                    <option value="yonetici">{ROLE_LABELS.yonetici}</option>
+                  </select>
+                  <button
+                    onClick={addMember}
+                    disabled={addingMember || !addUserId}
+                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {addingMember ? 'Ekleniyor…' : 'Ekle'}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-gray-400">
+                  Eklenen kişi işi kendi listesinde görür ve bildirim alır.
+                </p>
+              </div>
+            )}
 
             {invited.length > 0 && (
               <>

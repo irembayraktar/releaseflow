@@ -81,8 +81,10 @@ export default function NewRequest() {
       return
     }
 
-    if (!developerId) {
-      setError('Bir geliştirici seçmelisin.')
+    if (!developerId && !managerId) {
+      setError(
+        'Geliştirici veya yönetici seçmelisin. Geliştiriciyi bilmiyorsan yönetici seç; o, iş sayfasından geliştirici atayabilir.',
+      )
       return
     }
 
@@ -246,13 +248,14 @@ export default function NewRequest() {
 
           <div>
             <label htmlFor="developer" className="block text-sm font-medium text-gray-700">
-              Geliştirici *
+              Geliştirici
             </label>
             <PersonPicker
               inputId="developer"
               people={people}
               value={developerId}
               onChange={setDeveloperId}
+              placeholder="Bilmiyorsan boş bırak…"
             />
           </div>
 
