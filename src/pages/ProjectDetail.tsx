@@ -33,6 +33,7 @@ interface HistoryWithProfile {
   id: string
   old_status: ProjectStatus | null
   new_status: ProjectStatus
+  note: string | null
   created_at: string
   profiles: { name: string }
 }
@@ -50,6 +51,8 @@ function friendlyError(message: string): string {
   if (message.includes('GECERSIZ_GECIS')) return 'Bu durum geçişi tanımlı değil.'
   if (message.includes('YETKISIZ_GECIS'))
     return 'Bu geçiş için projedeki rolün yetkili değil.'
+  if (message.includes('NEDEN_GEREKLI')) return 'Reddetmek için bir neden yazmalısın.'
+  if (message.includes('IS_BULUNAMADI')) return 'İş bulunamadı veya erişim yetkin yok.'
   return message
 }
 
@@ -66,6 +69,8 @@ export default function ProjectDetail() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [changingStatus, setChangingStatus] = useState(false)
+  const [rejectingTo, setRejectingTo] = useState<ProjectStatus | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
   const [commentBody, setCommentBody] = useState('')
   const [sendingComment, setSendingComment] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -86,7 +91,7 @@ export default function ProjectDetail() {
           .order('created_at'),
         supabase
           .from('status_history')
-          .select('id, old_status, new_status, created_at, profiles:changed_by(name)')
+          .select('id, old_status, new_status, note, created_at, profiles:changed_by(name)')
           .eq('project_id', id)
           .order('created_at', { ascending: false }),
         supabase
@@ -133,21 +138,25 @@ export default function ProjectDetail() {
       )
     : []
 
-  const changeStatus = async (to: ProjectStatus) => {
+  const changeStatus = async (to: ProjectStatus, note?: string) => {
     if (!project) return
     setActionError(null)
     setChangingStatus(true)
 
-    const { error } = await supabase
-      .from('projects')
-      .update({ status: to })
-      .eq('id', project.id)
+    // Not (örn. red nedeni) trigger'a RPC üzerinden taşınır.
+    const { error } = await supabase.rpc('change_project_status', {
+      p_project: project.id,
+      p_to: to,
+      p_note: note?.trim() || null,
+    })
 
     setChangingStatus(false)
     if (error) {
       setActionError(friendlyError(error.message))
       return
     }
+    setRejectingTo(null)
+    setRejectReason('')
     await load()
   }
 
@@ -272,17 +281,72 @@ export default function ProjectDetail() {
 
       {/* Durum geçiş butonları: geçiş matrisi + kullanıcının rolünden türetilir */}
       {availableTransitions.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {availableTransitions.map((t) => (
-            <button
-              key={t.to_status}
-              onClick={() => changeStatus(t.to_status)}
-              disabled={changingStatus}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
-            >
-              → {STATUS_LABELS[t.to_status]}
-            </button>
-          ))}
+        <div className="mt-4">
+          <div className="flex flex-wrap gap-2">
+            {availableTransitions.map((t) => {
+              const isApprove = t.to_status === 'test_uygun'
+              const isReject = t.to_status === 'revize_gerekli'
+              const label = isApprove
+                ? '✓ Onayla (Test Uygun)'
+                : isReject
+                  ? '✗ Reddet (Revize İste)'
+                  : `→ ${STATUS_LABELS[t.to_status]}`
+              const colorClass = isApprove
+                ? 'bg-emerald-600 hover:bg-emerald-700'
+                : isReject
+                  ? 'bg-rose-600 hover:bg-rose-700'
+                  : 'bg-indigo-600 hover:bg-indigo-700'
+              return (
+                <button
+                  key={t.to_status}
+                  onClick={() =>
+                    isReject ? setRejectingTo(t.to_status) : changeStatus(t.to_status)
+                  }
+                  disabled={changingStatus}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors disabled:opacity-60 ${colorClass}`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {rejectingTo && (
+            <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <label
+                htmlFor="reject-reason"
+                className="block text-sm font-medium text-gray-900"
+              >
+                Red / revize nedeni *
+              </label>
+              <textarea
+                id="reject-reason"
+                rows={2}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Neyin düzeltilmesi gerekiyor?"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  onClick={() => changeStatus(rejectingTo, rejectReason)}
+                  disabled={changingStatus || rejectReason.trim().length < 5}
+                  className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
+                >
+                  Reddet ve revize iste
+                </button>
+                <button
+                  onClick={() => {
+                    setRejectingTo(null)
+                    setRejectReason('')
+                  }}
+                  className="text-sm text-gray-500 hover:text-gray-900"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -411,6 +475,9 @@ export default function ProjectDetail() {
                         {STATUS_LABELS[h.new_status]}
                       </span>
                     </p>
+                    {h.note && (
+                      <p className="mt-0.5 italic text-gray-500">“{h.note}”</p>
+                    )}
                     <p className="text-gray-400">
                       {h.profiles.name} · {new Date(h.created_at).toLocaleString('tr-TR')}
                     </p>

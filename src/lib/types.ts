@@ -98,7 +98,7 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   test_uygun: 'Test Uygun',
   canliya_alma_bekliyor: 'Canlıya Alma Bekliyor',
   canliya_alindi: 'Canlıya Alındı',
-  kapatildi: 'Kapatıldı',
+  kapatildi: 'Tamamlandı',
 }
 
 export const ROLE_LABELS: Record<MemberRole, string> = {
