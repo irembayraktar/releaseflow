@@ -332,10 +332,14 @@ create policy profiles_select on profiles
 create policy profiles_update_own on profiles
   for update to authenticated using (id = auth.uid());
 
--- Projeler: sadece üyeler görür; talep sahibi oluşturur; üyeler günceller
+-- Projeler: üyeler ve talep sahibi görür; talep sahibi oluşturur; üyeler günceller
 -- (durum geçişinin rol kontrolünü trigger yapar).
+-- requester_id kontrolü üyelikten bağımsızdır: INSERT ... RETURNING anında
+-- üyelik trigger'ı henüz çalışmadığı için sadece is_member ile satır görünmez
+-- ve ekleme "row-level security" hatasıyla döner.
 create policy projects_select on projects
-  for select to authenticated using (is_member(id, auth.uid()));
+  for select to authenticated
+  using (requester_id = auth.uid() or is_member(id, auth.uid()));
 
 create policy projects_insert on projects
   for insert to authenticated with check (requester_id = auth.uid());
