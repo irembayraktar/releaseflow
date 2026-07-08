@@ -39,6 +39,11 @@ interface HistoryWithProfile {
   profiles: { name: string }
 }
 
+interface InvitedMember {
+  email: string
+  member_role: MemberRole
+}
+
 interface FileRow {
   id: string
   file_name: string
@@ -65,6 +70,7 @@ export default function ProjectDetail() {
   const { session } = useAuth()
   const [project, setProject] = useState<Project | null>(null)
   const [members, setMembers] = useState<MemberWithProfile[]>([])
+  const [invited, setInvited] = useState<InvitedMember[]>([])
   const [comments, setComments] = useState<CommentWithProfile[]>([])
   const [history, setHistory] = useState<HistoryWithProfile[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
@@ -87,12 +93,23 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     if (!id) return
-    const [projectRes, membersRes, commentsRes, historyRes, filesRes, transitionsRes] =
-      await Promise.all([
+    const [
+      projectRes,
+      membersRes,
+      invitedRes,
+      commentsRes,
+      historyRes,
+      filesRes,
+      transitionsRes,
+    ] = await Promise.all([
         supabase.from('projects').select('*').eq('id', id).single(),
         supabase
           .from('project_members')
           .select('user_id, member_role, profiles(name, email)')
+          .eq('project_id', id),
+        supabase
+          .from('invited_members')
+          .select('email, member_role')
           .eq('project_id', id),
         supabase
           .from('comments')
@@ -124,6 +141,7 @@ export default function ProjectDetail() {
 
     setProject(projectRes.data)
     setMembers((membersRes.data as unknown as MemberWithProfile[]) ?? [])
+    setInvited(invitedRes.data ?? [])
     setComments((commentsRes.data as unknown as CommentWithProfile[]) ?? [])
     setHistory((historyRes.data as unknown as HistoryWithProfile[]) ?? [])
     setFiles(filesRes.data ?? [])
@@ -654,6 +672,24 @@ export default function ProjectDetail() {
                 </li>
               ))}
             </ul>
+
+            {invited.length > 0 && (
+              <>
+                <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Kayıt bekleyen davetliler
+                </h3>
+                <ul className="mt-2 space-y-2">
+                  {invited.map((i) => (
+                    <li key={i.email} className="text-sm">
+                      <p className="text-gray-600">{i.email}</p>
+                      <p className="text-xs text-gray-400">
+                        {ROLE_LABELS[i.member_role]} · kayıt olunca eklenecek
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </section>
 
           <section className="rounded-xl border border-gray-200 bg-white p-5">

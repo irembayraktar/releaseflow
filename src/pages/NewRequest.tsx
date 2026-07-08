@@ -3,8 +3,8 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { PRIORITY_LABELS } from '../lib/types'
-import type { Profile, ProjectPriority } from '../lib/types'
+import { PRIORITY_LABELS, ROLE_LABELS } from '../lib/types'
+import type { Profile, ProjectPriority, MemberRole } from '../lib/types'
 
 export default function NewRequest() {
   const navigate = useNavigate()
@@ -17,6 +17,9 @@ export default function NewRequest() {
   const [developerId, setDeveloperId] = useState('')
   const [managerId, setManagerId] = useState('')
   const [testerIds, setTesterIds] = useState<string[]>([])
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<MemberRole>('testci')
+  const [invites, setInvites] = useState<{ email: string; role: MemberRole }[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -32,6 +35,25 @@ export default function NewRequest() {
     setTesterIds((prev) =>
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
     )
+  }
+
+  const addInvite = () => {
+    const cleanEmail = inviteEmail.trim().toLowerCase()
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+      setError('Geçerli bir e-posta adresi gir.')
+      return
+    }
+    if (invites.some((i) => i.email === cleanEmail)) {
+      setError('Bu e-posta zaten davet listesinde.')
+      return
+    }
+    setInvites((prev) => [...prev, { email: cleanEmail, role: inviteRole }])
+    setInviteEmail('')
+    setError(null)
+  }
+
+  const removeInvite = (targetEmail: string) => {
+    setInvites((prev) => prev.filter((i) => i.email !== targetEmail))
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -80,6 +102,43 @@ export default function NewRequest() {
         setSubmitting(false)
         setError(`Talep oluştu ama testçiler eklenemedi: ${memberError.message}`)
         return
+      }
+    }
+
+    // Davetler: e-posta zaten kayıtlıysa doğrudan üye yapılır,
+    // değilse davet kaydı açılır (kayıt olduğunda üyeliğe dönüşür).
+    if (invites.length > 0) {
+      const findProfile = (invEmail: string) =>
+        people.find((p) => p.email.toLowerCase() === invEmail)
+
+      const registered = invites.filter((i) => findProfile(i.email))
+      const external = invites.filter((i) => !findProfile(i.email))
+
+      if (registered.length > 0) {
+        await supabase.from('project_members').upsert(
+          registered.map((i) => ({
+            project_id: project.id,
+            user_id: findProfile(i.email)!.id,
+            member_role: i.role,
+          })),
+          { onConflict: 'project_id,user_id', ignoreDuplicates: true },
+        )
+      }
+
+      if (external.length > 0) {
+        const { error: inviteError } = await supabase.from('invited_members').insert(
+          external.map((i) => ({
+            project_id: project.id,
+            email: i.email,
+            member_role: i.role,
+            invited_by: session.user.id,
+          })),
+        )
+        if (inviteError) {
+          setSubmitting(false)
+          setError(`Talep oluştu ama davetler kaydedilemedi: ${inviteError.message}`)
+          return
+        }
       }
     }
 
@@ -228,6 +287,68 @@ export default function NewRequest() {
               ))}
             </div>
           )}
+        </fieldset>
+
+        <fieldset className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+          <legend className="px-1 text-sm font-medium text-gray-700">
+            Kayıtlı olmayan kişiyi e-postayla davet et
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="kisi@firma.com"
+              className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as MemberRole)}
+              className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Davet edilen kişinin rolü"
+            >
+              <option value="testci">{ROLE_LABELS.testci}</option>
+              <option value="gelistirici">{ROLE_LABELS.gelistirici}</option>
+              <option value="yonetici">{ROLE_LABELS.yonetici}</option>
+            </select>
+            <button
+              type="button"
+              onClick={addInvite}
+              className="rounded-lg border border-indigo-300 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+            >
+              Ekle
+            </button>
+          </div>
+
+          {invites.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {invites.map((i) => (
+                <li
+                  key={i.email}
+                  className="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-sm"
+                >
+                  <span className="text-gray-700">
+                    {i.email}
+                    <span className="ml-2 text-xs text-gray-400">
+                      {ROLE_LABELS[i.role]}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeInvite(i.email)}
+                    className="text-xs text-rose-600 hover:underline"
+                  >
+                    Kaldır
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <p className="mt-2 text-xs text-gray-500">
+            Bu kişiler aynı e-postayla kayıt olduklarında işe otomatik eklenir; e-posta
+            zaten kayıtlıysa hemen üye yapılır.
+          </p>
         </fieldset>
 
         {error && (
