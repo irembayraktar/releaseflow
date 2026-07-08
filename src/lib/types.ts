@@ -33,6 +33,7 @@ export interface Project {
   requester_id: string
   developer_id: string | null
   manager_id: string | null
+  archived_at: string | null
   created_at: string
   updated_at: string
 }

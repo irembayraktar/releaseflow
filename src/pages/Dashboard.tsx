@@ -8,18 +8,23 @@ import type { Project } from '../lib/types'
 export default function Dashboard() {
   const { profile } = useAuth()
   const [projects, setProjects] = useState<Project[] | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase
+    setProjects(null)
+    let query = supabase
       .from('projects')
       .select('*')
       .order('updated_at', { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) setError(err.message)
-        else setProjects(data)
-      })
-  }, [])
+    if (!showArchived) {
+      query = query.is('archived_at', null)
+    }
+    query.then(({ data, error: err }) => {
+      if (err) setError(err.message)
+      else setProjects(data)
+    })
+  }, [showArchived])
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -35,6 +40,16 @@ export default function Dashboard() {
           Yeni talep
         </Link>
       </div>
+
+      <label className="mt-4 flex w-fit cursor-pointer items-center gap-2 text-sm text-gray-600">
+        <input
+          type="checkbox"
+          checked={showArchived}
+          onChange={(e) => setShowArchived(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+        />
+        Arşivlenenleri de göster
+      </label>
 
       {error && (
         <p role="alert" className="mt-6 text-sm text-rose-600">
@@ -77,10 +92,17 @@ export default function Dashboard() {
                     {new Date(p.updated_at).toLocaleDateString('tr-TR')}
                   </p>
                 </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[p.status]}`}
-                >
-                  {STATUS_LABELS[p.status]}
+                <span className="flex items-center gap-2">
+                  {p.archived_at && (
+                    <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-600">
+                      Arşivde
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[p.status]}`}
+                  >
+                    {STATUS_LABELS[p.status]}
+                  </span>
                 </span>
               </Link>
             </li>

@@ -53,6 +53,9 @@ function friendlyError(message: string): string {
     return 'Bu geçiş için projedeki rolün yetkili değil.'
   if (message.includes('NEDEN_GEREKLI')) return 'Reddetmek için bir neden yazmalısın.'
   if (message.includes('IS_BULUNAMADI')) return 'İş bulunamadı veya erişim yetkin yok.'
+  if (message.includes('YETKISIZ_ARSIV'))
+    return 'Arşivleme için talep sahibi veya yönetici olmalısın.'
+  if (message.includes('ARSIV_KURALI')) return 'Sadece tamamlanmış iş arşivlenebilir.'
   return message
 }
 
@@ -157,6 +160,22 @@ export default function ProjectDetail() {
     }
     setRejectingTo(null)
     setRejectReason('')
+    await load()
+  }
+
+  const toggleArchive = async () => {
+    if (!project) return
+    setActionError(null)
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ archived_at: project.archived_at ? null : new Date().toISOString() })
+      .eq('id', project.id)
+
+    if (error) {
+      setActionError(friendlyError(error.message))
+      return
+    }
     await load()
   }
 
@@ -272,11 +291,18 @@ export default function ProjectDetail() {
             {new Date(project.created_at).toLocaleDateString('tr-TR')}
           </p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${STATUS_BADGE_CLASSES[project.status]}`}
-        >
-          {STATUS_LABELS[project.status]}
-        </span>
+        <div className="flex items-center gap-2">
+          {project.archived_at && (
+            <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-600">
+              Arşivde
+            </span>
+          )}
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${STATUS_BADGE_CLASSES[project.status]}`}
+          >
+            {STATUS_LABELS[project.status]}
+          </span>
+        </div>
       </div>
 
       {/* Durum geçiş butonları: geçiş matrisi + kullanıcının rolünden türetilir */}
@@ -286,16 +312,22 @@ export default function ProjectDetail() {
             {availableTransitions.map((t) => {
               const isApprove = t.to_status === 'test_uygun'
               const isReject = t.to_status === 'revize_gerekli'
+              // Tamamlanmış işten revizeye dönüş "yeniden açma"dır; neden yine zorunlu.
+              const isReopen = isReject && project.status === 'kapatildi'
               const label = isApprove
                 ? '✓ Onayla (Test Uygun)'
-                : isReject
-                  ? '✗ Reddet (Revize İste)'
-                  : `→ ${STATUS_LABELS[t.to_status]}`
+                : isReopen
+                  ? '↻ Yeniden Aç (Revize İste)'
+                  : isReject
+                    ? '✗ Reddet (Revize İste)'
+                    : `→ ${STATUS_LABELS[t.to_status]}`
               const colorClass = isApprove
                 ? 'bg-emerald-600 hover:bg-emerald-700'
-                : isReject
-                  ? 'bg-rose-600 hover:bg-rose-700'
-                  : 'bg-indigo-600 hover:bg-indigo-700'
+                : isReopen
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : isReject
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
               return (
                 <button
                   key={t.to_status}
@@ -317,7 +349,9 @@ export default function ProjectDetail() {
                 htmlFor="reject-reason"
                 className="block text-sm font-medium text-gray-900"
               >
-                Red / revize nedeni *
+                {project.status === 'kapatildi'
+                  ? 'Yeniden açma / revize nedeni *'
+                  : 'Red / revize nedeni *'}
               </label>
               <textarea
                 id="reject-reason"
@@ -333,7 +367,9 @@ export default function ProjectDetail() {
                   disabled={changingStatus || rejectReason.trim().length < 5}
                   className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
                 >
-                  Reddet ve revize iste
+                  {project.status === 'kapatildi'
+                    ? 'Yeniden aç ve revize iste'
+                    : 'Reddet ve revize iste'}
                 </button>
                 <button
                   onClick={() => {
@@ -349,6 +385,17 @@ export default function ProjectDetail() {
           )}
         </div>
       )}
+
+      {/* Arşivleme: tamamlanmış işte, talep sahibi/yönetici için */}
+      {project.status === 'kapatildi' &&
+        (myRoles.includes('talep_sahibi') || myRoles.includes('yonetici')) && (
+          <button
+            onClick={toggleArchive}
+            className="mt-3 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+          >
+            {project.archived_at ? 'Arşivden çıkar' : 'Arşivle'}
+          </button>
+        )}
 
       {actionError && (
         <p role="alert" className="mt-3 text-sm text-rose-600">
