@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { PRIORITY_LABELS, ROLE_LABELS } from '../lib/types'
 import type { Profile, ProjectPriority, MemberRole } from '../lib/types'
+import PersonPicker from '../components/PersonPicker'
 
 export default function NewRequest() {
   const navigate = useNavigate()
@@ -16,7 +17,9 @@ export default function NewRequest() {
   const [priority, setPriority] = useState<ProjectPriority>('orta')
   const [developerId, setDeveloperId] = useState('')
   const [managerId, setManagerId] = useState('')
-  const [testerIds, setTesterIds] = useState<string[]>([])
+  const [memberId, setMemberId] = useState('')
+  const [memberRole, setMemberRole] = useState<MemberRole>('testci')
+  const [teamMembers, setTeamMembers] = useState<{ userId: string; role: MemberRole }[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<MemberRole>('testci')
   const [invites, setInvites] = useState<{ email: string; role: MemberRole }[]>([])
@@ -31,10 +34,22 @@ export default function NewRequest() {
       .then(({ data }) => setPeople(data ?? []))
   }, [])
 
-  const toggleTester = (id: string) => {
-    setTesterIds((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
-    )
+  const addTeamMember = () => {
+    if (!memberId) {
+      setError('Eklenecek kişiyi seç.')
+      return
+    }
+    if (teamMembers.some((m) => m.userId === memberId)) {
+      setError('Bu kişi zaten ekipte.')
+      return
+    }
+    setTeamMembers((prev) => [...prev, { userId: memberId, role: memberRole }])
+    setMemberId('')
+    setError(null)
+  }
+
+  const removeTeamMember = (userId: string) => {
+    setTeamMembers((prev) => prev.filter((m) => m.userId !== userId))
   }
 
   const addInvite = () => {
@@ -66,6 +81,11 @@ export default function NewRequest() {
       return
     }
 
+    if (!developerId) {
+      setError('Bir geliştirici seçmelisin.')
+      return
+    }
+
     setSubmitting(true)
 
     const { data: project, error: insertError } = await supabase
@@ -88,19 +108,19 @@ export default function NewRequest() {
       return
     }
 
-    // Geliştirici/yönetici üyelikleri trigger ile eklendi; testçiler burada eklenir.
-    if (testerIds.length > 0) {
+    // Geliştirici/yönetici üyelikleri trigger ile eklendi; ek ekip üyeleri burada eklenir.
+    if (teamMembers.length > 0) {
       const { error: memberError } = await supabase.from('project_members').upsert(
-        testerIds.map((userId) => ({
+        teamMembers.map((m) => ({
           project_id: project.id,
-          user_id: userId,
-          member_role: 'testci' as const,
+          user_id: m.userId,
+          member_role: m.role,
         })),
         { onConflict: 'project_id,user_id', ignoreDuplicates: true },
       )
       if (memberError) {
         setSubmitting(false)
-        setError(`Talep oluştu ama testçiler eklenemedi: ${memberError.message}`)
+        setError(`Talep oluştu ama ekip üyeleri eklenemedi: ${memberError.message}`)
         return
       }
     }
@@ -228,65 +248,92 @@ export default function NewRequest() {
             <label htmlFor="developer" className="block text-sm font-medium text-gray-700">
               Geliştirici *
             </label>
-            <select
-              id="developer"
-              required
+            <PersonPicker
+              inputId="developer"
+              people={people}
               value={developerId}
-              onChange={(e) => setDeveloperId(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Seç…</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              onChange={setDeveloperId}
+            />
           </div>
 
           <div>
             <label htmlFor="manager" className="block text-sm font-medium text-gray-700">
               Yönetici
             </label>
-            <select
-              id="manager"
+            <PersonPicker
+              inputId="manager"
+              people={people}
               value={managerId}
-              onChange={(e) => setManagerId(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Yok</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              onChange={setManagerId}
+              placeholder="İsteğe bağlı — isim/e-posta yaz…"
+            />
           </div>
         </div>
 
-        <fieldset>
-          <legend className="text-sm font-medium text-gray-700">Test kullanıcıları</legend>
-          {people.length === 0 ? (
-            <p className="mt-1 text-sm text-gray-500">Kayıtlı kullanıcı bulunamadı.</p>
-          ) : (
-            <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
-              {people.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={testerIds.includes(p.id)}
-                    onChange={() => toggleTester(p.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  {p.name}
-                  <span className="text-xs text-gray-400">{p.email}</span>
-                </label>
-              ))}
+        <fieldset className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+          <legend className="px-1 text-sm font-medium text-gray-700">
+            Ekip üyeleri (kayıtlı kullanıcılar)
+          </legend>
+          <div className="flex flex-wrap items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <PersonPicker
+                people={people}
+                value={memberId}
+                onChange={setMemberId}
+                excludeIds={teamMembers.map((m) => m.userId)}
+              />
             </div>
+            <select
+              value={memberRole}
+              onChange={(e) => setMemberRole(e.target.value as MemberRole)}
+              className="mt-1 rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Kişinin rolü"
+            >
+              <option value="testci">{ROLE_LABELS.testci}</option>
+              <option value="gelistirici">{ROLE_LABELS.gelistirici}</option>
+              <option value="yonetici">{ROLE_LABELS.yonetici}</option>
+            </select>
+            <button
+              type="button"
+              onClick={addTeamMember}
+              className="mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+            >
+              Ekle
+            </button>
+          </div>
+
+          {teamMembers.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {teamMembers.map((m) => {
+                const person = people.find((p) => p.id === m.userId)
+                return (
+                  <li
+                    key={m.userId}
+                    className="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-sm"
+                  >
+                    <span className="text-gray-700">
+                      {person?.name ?? 'Bilinmeyen kişi'}
+                      <span className="ml-2 text-xs text-gray-400">
+                        {ROLE_LABELS[m.role]}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeTeamMember(m.userId)}
+                      className="text-xs text-rose-600 hover:underline"
+                    >
+                      Kaldır
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
           )}
+
+          <p className="mt-2 text-xs text-gray-500">
+            Yukarıda seçtiğin geliştirici ve yönetici otomatik eklenir; buradan testçi
+            veya ek geliştirici/yönetici ekleyebilirsin.
+          </p>
         </fieldset>
 
         <fieldset className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
