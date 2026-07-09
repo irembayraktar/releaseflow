@@ -167,12 +167,18 @@ export default function ProjectDetail() {
     .map((m) => m.member_role)
 
   // Kullanıcının bu durumdan yapabileceği geçişler: matris + rol kesişimi.
+  // Dinamik test kuralı (trigger'daki kuralın UI karşılığı): projede testçi
+  // yoksa test sonucunu geliştirici ve yönetici de girebilir.
+  const hasTester = members.some((m) => m.member_role === 'testci')
   const availableTransitions = project
-    ? transitions.filter(
-        (t) =>
-          t.from_status === project.status &&
-          t.allowed_roles.some((r) => myRoles.includes(r)),
-      )
+    ? transitions.filter((t) => {
+        if (t.from_status !== project.status) return false
+        const allowed: MemberRole[] =
+          t.from_status === 'test_bekliyor' && !hasTester
+            ? [...t.allowed_roles, 'gelistirici', 'yonetici']
+            : t.allowed_roles
+        return allowed.some((r) => myRoles.includes(r))
+      })
     : []
 
   const changeStatus = async (to: ProjectStatus, note?: string) => {
