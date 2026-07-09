@@ -70,7 +70,7 @@ export default function Login() {
       <div className="relative w-full max-w-sm">
         <div className="flex flex-col items-center">
           <Logo size={56} />
-          <h1 className="mt-3 text-2xl font-semibold text-gray-900">ReleaseFlow</h1>
+          <h1 className="mt-3 text-2xl font-semibold text-gray-900">İş Takibi</h1>
           <p className="mt-1 text-sm text-gray-500">
             İş talebi, test ve canlıya alma takibi
           </p>

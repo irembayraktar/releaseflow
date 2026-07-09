@@ -1,4 +1,4 @@
-# ReleaseFlow
+# İş Takibi
 
 Talep → geliştirme → test → canlıya alma akışıyla çalışan ekiplerde mail üzerinden dağılan iş takibini tek merkezde toplayan uygulama.
 

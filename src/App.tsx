@@ -33,7 +33,7 @@ function ProtectedLayout() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <span className="flex items-center gap-2 font-semibold text-gray-900">
             <Logo size={28} />
-            ReleaseFlow
+            İş Takibi
           </span>
           <button
             onClick={signOut}
