@@ -2,6 +2,10 @@
 
 Talep → geliştirme → test → canlıya alma akışıyla çalışan ekiplerde mail üzerinden dağılan iş takibini tek merkezde toplayan uygulama.
 
+**🔗 Canlı Demo:** [releaseflow-six.vercel.app](https://releaseflow-six.vercel.app)
+
+Denemek için kayıt olabilirsiniz; farklı rolleri görmek için birden fazla hesap açıp bir iş talebini uçtan uca (talep → geliştirme → test onayı → canlıya alma) yürütebilirsiniz.
+
 ## Problem
 
 Geliştirme talepleri, test bildirimleri ve canlıya alma onayları ayrı mail zincirlerinde kayboluyor; hangi işin kimde olduğu ve hangi aşamada beklediği takip edilemiyor. Bu problemi SAP/ABAP geliştirme süreçlerinde bizzat yaşadım; uygulama, aynı onay akışıyla çalışan her ekipte (kurumsal yazılım, iç araçlar, ajans işleri) kullanılabilecek şekilde tasarlandı.

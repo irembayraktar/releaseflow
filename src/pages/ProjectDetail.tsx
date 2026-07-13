@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -69,6 +69,7 @@ function friendlyError(message: string): string {
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { session } = useAuth()
   const [project, setProject] = useState<Project | null>(null)
   const [members, setMembers] = useState<MemberWithProfile[]>([])
@@ -77,6 +78,8 @@ export default function ProjectDetail() {
   const [addUserId, setAddUserId] = useState('')
   const [addUserRole, setAddUserRole] = useState<MemberRole>('gelistirici')
   const [addingMember, setAddingMember] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [comments, setComments] = useState<CommentWithProfile[]>([])
   const [history, setHistory] = useState<HistoryWithProfile[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
@@ -267,6 +270,38 @@ export default function ProjectDetail() {
     }
     setAddUserId('')
     await load()
+  }
+
+  const deleteProject = async () => {
+    if (!project) return
+    setActionError(null)
+    setDeleting(true)
+
+    // Storage'daki dosyalar cascade ile silinmediği için önce temizlenir.
+    if (files.length > 0) {
+      await supabase.storage
+        .from('project-files')
+        .remove(files.map((f) => f.storage_path))
+    }
+
+    const { data, error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', project.id)
+      .select()
+
+    setDeleting(false)
+    if (error) {
+      setActionError(friendlyError(error.message))
+      return
+    }
+    if (!data || data.length === 0) {
+      setActionError(
+        'Bu talep silinemedi: yalnızca talep sahibi, iş geliştirmeye alınmadan silebilir.',
+      )
+      return
+    }
+    navigate('/')
   }
 
   const toggleArchive = async () => {
@@ -795,6 +830,49 @@ export default function ProjectDetail() {
           </section>
         </div>
       </div>
+
+      {/* Silme: yalnızca talep sahibi, iş geliştirmeye alınmadan */}
+      {myRoles.includes('talep_sahibi') &&
+        (project.status === 'yeni_talep' || project.status === 'inceleniyor') && (
+          <div className="mt-8 rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+            {confirmingDelete ? (
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  Bu talep, tüm yorumları ve dosyalarıyla birlikte kalıcı olarak
+                  silinecek. Emin misin?
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    onClick={deleteProject}
+                    disabled={deleting}
+                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
+                  >
+                    {deleting ? 'Siliniyor…' : 'Evet, kalıcı olarak sil'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmingDelete(false)}
+                    className="text-sm text-gray-500 hover:text-gray-900"
+                  >
+                    Vazgeç
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-gray-500">
+                  Yanlış açılan talep, iş geliştirmeye alınmadan silinebilir. İş
+                  başladıktan sonra silme kapanır; kapatma/arşiv kullanılır.
+                </p>
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  className="rounded-lg border border-rose-300 px-3 py-1.5 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100"
+                >
+                  Talebi sil
+                </button>
+              </div>
+            )}
+          </div>
+        )}
     </div>
   )
 }
